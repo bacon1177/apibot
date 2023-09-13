@@ -1,0 +1,83 @@
+const Discord = require('discord.js');
+const noblox = require('noblox.js');
+const dotenv = require('dotenv');
+
+dotenv.config();
+const config = require('./config.json');
+const client = new Discord.Client({
+    intents: [
+        Discord.Intents.FLAGS.GUILDS,
+        Discord.Intents.FLAGS.GUILD_MESSAGES
+    ]
+});
+
+const prefix = '.';
+var groupId = 15527234
+var maximumRank = 3
+
+noblox.setCookie(config.ROBLOX_COOKIE).catch(() => {console.log("Sorry, it failed.");})
+
+async function getXPFromDatastore(userId) {
+    try {
+        const playerData = await noblox.getDatastore(config.game).GetAsync(userId);
+
+        if (playerData) {
+            const xp = playerData.Instances.LVL.XP.Value;
+            return xp;
+        } else {
+            return 0;
+        }
+    } catch (error) {
+        console.error('Error fetching XP from Datastore:', error);
+        return 0;
+    }
+}
+
+client.on('ready', () => {
+    console.log(`Bot is ready! Logged in as ${client.user.tag}`);
+});
+
+function isCommand(command, message){
+	var command = command.toLowerCase();
+	var content = message.content.toLowerCase();
+	return content.startsWith(prefix + command);
+}
+
+client.on('messageCreate', async message => {
+    if (message.author.bot) return;
+    const args = message.content.slice(prefix.length).trim().split(/ +/);
+
+    if (isCommand('promote', message)) {
+        var username = args[1]
+        
+        if (username){
+    		message.channel.send(`Checking ROBLOX for ${username}`)
+    		roblox.getIdFromUsername(username)
+			.then(function(id){
+				roblox.getRankInGroup(groupId, id)
+				.then(function(rank){
+					if(maximumRank <= rank){
+                        message.channel.send(NotPromotedEmbed)
+					} else {
+						message.channel.send(`${id} is ranked ${rank}, which cannot be promoted from.`)
+						roblox.promote(groupId, id)
+						.then(function(roles){
+							message.channel.send(`Promoted ${id} from ${roles.oldRole.Name} to ${roles.newRole.Name}`)
+						}).catch(function(err){
+							message.channel.send("Failed to promote.")
+						});
+					}
+				}).catch(function(err){
+					message.channel.send("Couldn't get player in the group.")
+				});
+			}).catch(function(err){ 
+				message.channel.send(`Sorry, but ${username} doesn't exist on ROBLOX.`)
+			});
+    	} else {
+    		message.channel.send("Please enter a username.")
+    	}
+    	return;
+    }
+});
+
+client.login(config.DISCORD_TOKEN);
